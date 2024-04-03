@@ -101,7 +101,7 @@ def create_session():
 
     return jsonify(session_id=session_id)
 
-@app.route('/session/<session_id>/augment', methods=['POST'])
+@app.route('/session/<session_id>', methods=['PUT'])
 def augment_session(session_id):
     session = Session.query.filter_by(id=session_id).first()
     if session is None:
@@ -201,5 +201,5 @@ class CaptureGitHubCopilot:
             
 addons = [
     CaptureGitHubCopilot(),
-    asgiapp.WSGIApp(app, "capture.copilot", 80),
+    asgiapp.WSGIApp(app, "example.com", 80),
 ]
