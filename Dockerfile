@@ -17,7 +17,7 @@ RUN usermod -G staff mitmproxy
 
 RUN apt-get update && \
     apt-get install -y python3 python3-pip && \
-    pip3 install Flask prospector crosshair-tool flask-sqlalchemy && \
+    pip3 install Flask prospector crosshair-tool flask-sqlalchemy sqlalchemy && \
     rm -rf /var/lib/apt/lists/*
 # USER mitmproxy
 EXPOSE 8082
