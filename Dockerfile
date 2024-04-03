@@ -22,13 +22,12 @@ RUN apt-get update && \
 # USER mitmproxy
 EXPOSE 8082
 
-ENV FLASK_APP=/home/mitmproxy/app.py
 ENV BASE_DIR=/home/mitmproxy
 
 # Add your Flask app
-ADD ./app.py /home/mitmproxy/app.py
-RUN chmod +x /home/mitmproxy/app.py && \
-    chown -R mitmproxy:staff /home/mitmproxy/app.py
+ADD ./processor.py /home/mitmproxy/processor.py
+RUN chmod +x /home/mitmproxy/processor.py && \
+    chown -R mitmproxy:staff /home/mitmproxy/processor.py
 
 
 ADD ./start.sh /start.sh

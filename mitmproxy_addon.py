@@ -8,6 +8,69 @@ from flask import Flask, jsonify, request, abort
 import os
 
 from mitmproxy.addons import asgiapp
+import ast
+import subprocess
+import json
+
+# Run prospector via cli on a given file that is given as parameter
+# The output structure is as follows:
+def run_prospector(file_path):
+  command = f"python -m prospector {file_path} -o json --zero-exit"
+  result = subprocess.run(command, shell=True, capture_output=True, text=True)
+  if result.returncode == 0:
+    return True, None
+  print("raw output", result)
+  output = json.loads(result.stdout.strip())
+  print(output["summary"]["message_count"], "issues found in", file_path)
+  return False, output
+
+
+# write a mypy parser from a string, split by newline then parse: {FILENAME}:{LINE_NUMBER}: error: {MESSAGE}
+def parse_mypy_output(output):
+  lines = output.split("\n")
+  errors = []
+  for line in lines:
+    if "error" in line:
+      parts = line.split(":")
+      message = parts[3:]
+      errors.append({
+        "line_number": parts[1],
+        "message": (("".join(message)).strip()).replace("  ", " ")
+      })
+  return errors
+
+# write a method that parses a targetfile with ast and checks if there are any asserts statements
+def check_asserts(file_path):
+  with open(file_path, "r") as file:
+    content = file.read()
+    parsed_content = ast.parse(content)
+    for node in ast.walk(parsed_content):
+      if isinstance(node, ast.Assert):
+        print(node)
+        return True
+  return False
+
+# run crosshair via crosshair check {FILENAME} --analysis_kind asserts
+def run_crosshair(file_path):
+
+  if not check_asserts(file_path):
+    # throw exception
+    return False, f"No asserts found"
+  command = f"crosshair check {file_path} --analysis_kind asserts"
+  result = subprocess.run(command, shell=True, capture_output=True, text=True)
+  returncode = result.returncode
+  print("crosshair exit code", result.returncode)
+  output = result.stdout.strip()
+  print("crosshair output", output)
+  output = parse_mypy_output(output)
+
+  # if output is a list and empty and returncode is 1, rais exception
+  if returncode == 1 and len(output) == 0:
+    return False, "Verification failed. No issues triagable by Crosshair found."
+  elif returncode == 0:
+    return True, None
+  return False, output
+
 
 
 
@@ -37,7 +100,8 @@ class CopilotCapture(Base):
     __tablename__ = 'copilot_capture'
     
     id = Column(Integer, primary_key=True)
-    session_id = Column(String(36), nullable=False)
+    time = Column(String(36), nullable=False)
+    running_id = Column(String(36), nullable=False)
     request_method = Column(String(10))
     request_url = Column(String(255))
     request_body = Column(Text)
@@ -64,7 +128,8 @@ def get_captures():
     captures_list = [
         {
             'id': capture.id,
-            'session_id': capture.session_id,
+            'time': capture.time,
+            'running_id': capture.running_id,
             'request_method': capture.request_method,
             'request_url': capture.request_url,
             'request_body': capture.request_body,
@@ -110,6 +175,8 @@ def augment_session(session_id):
     if 'file' not in request.json:
         return jsonify(error="No file in request"), 400
     
+    # get current time
+    
     # change this so instead it uses the request body key files
     file = request.json['file'] 
 
@@ -121,7 +188,24 @@ def augment_session(session_id):
     session.augmented_file_path = augmented_file_path
     db_session.commit()
 
-    return jsonify(session_id=session_id, augmented=True)
+    original_prospector_valid, original_prospector_output = run_prospector(session.original_file_path)
+    original_crosshair_valid, original_crosshair_output = run_crosshair(session.original_file_path)
+
+    augmented_prospector_valid, augmented_prospector_output = run_prospector(session.augmented_file_path)
+    augmented_crosshair_valid, augmented_crosshair_output = run_crosshair(session.augmented_file_path)
+
+
+
+
+    # capture = CopilotCapture.query.filter_by(time=session_id).first()
+    variables = {
+        'session_id': session_id,
+        'crosshair_output': [original_crosshair_output, augmented_crosshair_output],
+        'prospector_output': [original_prospector_output, augmented_prospector_output],
+        'crosshair_valid': [original_crosshair_valid, augmented_crosshair_valid],
+        'prospector_valid': [original_prospector_valid, augmented_prospector_valid]
+    }
+    return jsonify(variables), 200
 
 ## Mitmproxy
 
@@ -184,18 +268,20 @@ class CaptureGitHubCopilot:
             self.delta_text = ''
             request_body = json.loads(flow.request.content.decode(errors="replace"))
             parsed_response = self.parse_stream(flow.response.content.decode(errors="replace")) if is_prompt else flow.response.content.decode(errors="replace")
-            capture = CopilotCapture(
-                session_id=str(int(time.time())) + str(self.num),
-                request_method=flow.request.method,
-                request_url=flow.request.pretty_url,
-                request_body=json.dumps(request_body),
-                response_status_code=flow.response.status_code,
-                response_headers=json.dumps(dict(flow.response.headers)),
-                response_body=json.dumps(parsed_response),
-                parsed_content=self.delta_text
-            )
-            db_session.add(capture)
-            db_session.commit()
+            if "```" in self.delta_text:
+                capture = CopilotCapture(
+                    time=str(int(time.time())), 
+                    running_id=str(self.num),
+                    request_method=flow.request.method,
+                    request_url=flow.request.pretty_url,
+                    request_body=json.dumps(request_body),
+                    response_status_code=flow.response.status_code,
+                    response_headers=json.dumps(dict(flow.response.headers)),
+                    response_body=json.dumps(parsed_response),
+                    parsed_content=self.delta_text
+                )
+                db_session.add(capture)
+                db_session.commit()
 
 
             

@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { augmentSession, createSession } from './client';
 import path from 'path';
 import { sessionStart } from './extension-logic';
+import { ToolOutput } from './types';
+import { clear } from 'console';
 
 function debounce<T extends (...args: any[]) => any>(
   func: T,
@@ -72,6 +74,8 @@ export function activate(context: vscode.ExtensionContext) {
               return;
             }
 
+            let tooloutput: ToolOutput;
+
             vscode.window.withProgress(
               {
                 location: vscode.ProgressLocation.Notification,
@@ -89,15 +93,92 @@ export function activate(context: vscode.ExtensionContext) {
                   }
                 }, 500);
 
-                await augmentSession(
+                tooloutput = await augmentSession(
                   sessionId,
                   vscode.window.activeTextEditor?.document.getText()
-                );
+                ) as ToolOutput;
+                clearInterval(interval);
                 progress.report({ increment: 100 });
+
+                const completedBothProspector = tooloutput.prospector_valid[0] && tooloutput.prospector_valid[1];
+                const completedBothCrosshair = tooloutput.crosshair_valid[0] && tooloutput.crosshair_valid[1];
+
+                const outputMarkdown = `# Completion Verifier Output
+            
+| Tool | Passed Before Completion | Passed After Completion |
+|---|---|---|
+| Prospector (Code Quality) | ${tooloutput.prospector_valid[0] ? '✅' : '❌'} | ${tooloutput.prospector_valid[1] ? '✅' : '❌'} |
+| Crosshair (Symbolic Execution) | ${tooloutput.crosshair_valid[0] ? '✅' : '❌'} | ${tooloutput.crosshair_valid[1] ? '✅' : '❌'} |
+
+
+## Prospector Output
+${completedBothProspector ? '🎉🎉🎉 Congratulations! No Prospector remarks! 🎉🎉🎉' : `### Before Completion
+\`\`\`
+${JSON.stringify(tooloutput.prospector_output[0], null, 2)}
+\`\`\`
+### After Completion
+\`\`\`
+${JSON.stringify(tooloutput.prospector_output[1], null, 2)}
+\`\`\`
+`}
+
+
+## Crosshair Output
+### Before Completion
+\`\`\`
+${JSON.stringify(tooloutput.crosshair_output[0], null, 2)}
+\`\`\`
+### After Completion
+\`\`\`
+${JSON.stringify(tooloutput.crosshair_output[1], null, 2)}
+\`\`\`
+`
+
+// Open a new text document with markdown content
+const document = await vscode.workspace.openTextDocument({
+  content: outputMarkdown,
+  language: 'markdown'
+});
+
+// Show the markdown document in the editor
+const editor = await vscode.window.showTextDocument(document);
+
+// Execute the command to show markdown preview
+await vscode.commands.executeCommand('markdown.showPreview', document.uri);
+
+// Optionally, you can focus back to the editor if needed
+// await vscode.window.showTextDocument(document);
+
+
+// vscode.workspace.openTextDocument({ content: outputMarkdown, language: 'markdown' })
+//   .then(document => {
+//     // Open the document
+//     vscode.window.showTextDocument(document)
+//       .then(editor => {
+//         // Command to switch to markdown preview
+//         vscode.commands.executeCommand('markdown.showPreviewToSide')
+//           .then(() => {
+//             // Optional: Additional commands or actions after opening the preview
+//           }, err => {
+//             // Handle errors, e.g., command not found
+//             console.error(err);
+//           });
+//       }, err => {
+//         // Handle errors, e.g., document couldn't be opened
+//         console.error(err);
+//       });
+//   }, err => {
+//     // Handle errors, e.g., document couldn't be created
+//     console.error(err);
+//   });
+
+
               }
             );
+
+            
           },
-          2000
+          3555
         )
       );
 
@@ -105,9 +186,9 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   // Attach the listener to the custom event
-  context.subscriptions.push(completionVerifierEvent(setupDebouncedChangeListener));
-
-  
+  context.subscriptions.push(
+    completionVerifierEvent(setupDebouncedChangeListener)
+  );
 }
 
 // This method is called when your extension is deactivated

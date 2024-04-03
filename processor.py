@@ -24,9 +24,6 @@ def apply_diff(original_content, diff_block):
     # Join the final content into a single string
     return '\n'.join(final_content)
 
-
-
-
 def extract_code_blocks(markdown_text):
     # Convert markdown to HTML with fenced-code-blocks support
     html = markdown2.markdown(markdown_text, extras=["fenced-code-blocks"])
@@ -56,47 +53,26 @@ def extract_code_blocks(markdown_text):
 
     return code_blocks
 
-try:
-    with open("copilot.body", 'r') as file:
-        http_response_content = file.read()
-
-    data_chunks = http_response_content.split('data: ')[1:]
-    delta_text = ''
-
-    for chunk in data_chunks:
-        try:
-            json_data = json.loads(chunk)
-            delta_text += extract_and_preserve_structure(json_data)
-        except json.JSONDecodeError:
-            # Optionally log or handle the error here
-            pass
-
-    # Use or print delta_text as needed
-    # Save it to file
-    with open("delta_text.txt", 'w') as file:
-        file.write(delta_text)
-    
-    # print(delta_text)
-
-    
-
-    # Your markdown content (replace 'delta_text' with your actual markdown content variable)
-    markdown_content = delta_text
 
     # Extract code blocks
     code_blocks = extract_code_blocks(markdown_content)
 
-    #print("Code Blocks", code_blocks)
+    final_content = None
 
-    original_content = """import logging
-
-ap, ndcg = run_lambdamart(best_hyperparameter, save=True)
-
-print("Finished with Metrics", ap, ndcg)
-"""
-
-    applied_diff = apply_diff(original_content, '\n'.join(code_blocks[0]))
-    print(applied_diff)
-
-except FileNotFoundError:
-    print("The file copilot.body was not found.")
+    # if present split of # FILEPATH # BEGIN and #END until respective end of line from original_content
+    if "# BEGIN" in original_content:
+        # get the line for each
+        original_content = original_content.split("\n")
+        # get the index of the line
+        begin_index = original_content.index("# BEGIN")
+        end_index = original_content.index("# END")
+        filepath_index = original_content.index("# FILEPATH")
+        # remove them from list
+        del original_content[begin_index]
+        del original_content[end_index]
+        del original_content[filepath_index]
+        # join the list back to string
+        final_content = "\n".join(original_content)
+    else:
+        # Its a diff for longer contents
+        final_content = apply_diff(original_content, '\n'.join(code_blocks[0]))
