@@ -438,3 +438,7 @@ completion/
 
 code-extractor-extension/node_modules/
 code-extractor-extension/out/
+
+augmented-uploads/
+uploads/
+*.sqlite3

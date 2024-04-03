@@ -5,14 +5,14 @@ import os
 
 from models import CopilotCapture, Session, Base
 
+
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sessions.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-db.init_app(app)
-db.Model = Base
 
+engine = create_engine('sqlite:///sessions.db')
+db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
+Base = declarative_base()
 
+Base.metadata.create_all(bind=engine)
 
 # Set the root directory you want to start listing files from
 base_dir = os.getenv("BASE_DIR", os.getcwd())
@@ -21,7 +21,7 @@ ROOT_DIR = os.path.join(base_dir, "prompt")
 
 @app.route('/captures', methods=['GET'])
 def get_captures():
-    captures = CopilotCapture.query.all()
+    captures = db_session.query(CopilotCapture).all()
     captures_list = [
         {
             'id': capture.id,
@@ -41,20 +41,19 @@ def get_captures():
 
 @app.route('/session/', methods=['POST'])
 def create_session():
-    if 'file' not in request.files:
-        return jsonify(error="No file part"), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify(error="No selected file"), 400
+    if 'file' not in request.json:
+        return jsonify(error="No file in request"), 400
 
+    file = request.json['file']
     session_id = str(uuid.uuid4())
-    original_file_path = os.path.join(base_dir, 'uploads', session_id+'.py')
+    original_file_path = os.path.join(os.getenv("BASE_DIR", os.getcwd()), 'uploads', session_id+'.py')
     os.makedirs(os.path.dirname(original_file_path), exist_ok=True)
-    file.save(original_file_path)
+    with open(original_file_path, 'w') as f:
+        f.write(file)
 
     new_session = Session(id=session_id, original_file_path=original_file_path)
-    db.session.add(new_session)
-    db.session.commit()
+    db_session.add(new_session)
+    db_session.commit()
 
     return jsonify(session_id=session_id)
 

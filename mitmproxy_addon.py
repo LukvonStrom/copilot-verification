@@ -1,33 +1,55 @@
 import json
 from mitmproxy import http
 import time
-from models import Base, CopilotCapture
 from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base
 import uuid
 from flask import Flask, jsonify, request, abort
-from flask_sqlalchemy import SQLAlchemy
 import os
 
-from models import CopilotCapture, Session, Base
 from mitmproxy.addons import asgiapp
 
 
 
 ## SQLAlchemy
-engine = create_engine('sqlite:///sessions.db')
+engine = create_engine('sqlite:///sessions.sqlite3')
 db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sessions.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-# db.init_app(app)
-db.Model = Base
+Base = declarative_base()
+
 # Set the query property to use your session
 Base.query = db_session.query_property()
+
+class Session(Base):
+    __tablename__ = 'sessions'
+    
+    id = Column(String(36), primary_key=True, unique=True, nullable=False)
+    original_file_path = Column(String(120), nullable=False)
+    augmented_file_path = Column(String(120), nullable=True)
+
+    def __repr__(self):
+        return f'<Session {self.id}>'
+    
+class CopilotCapture(Base):
+    __tablename__ = 'copilot_capture'
+    
+    id = Column(Integer, primary_key=True)
+    session_id = Column(String(36), nullable=False)
+    request_method = Column(String(10))
+    request_url = Column(String(255))
+    request_body = Column(Text)
+    response_status_code = Column(Integer)
+    response_headers = Column(Text)
+    response_body = Column(Text)
+    parsed_content = Column(Text)
+
+    def __repr__(self):
+        return f'<CopilotCapture {self.id}>'
+
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -74,8 +96,8 @@ def create_session():
         f.write(file)
 
     new_session = Session(id=session_id, original_file_path=original_file_path)
-    db.session.add(new_session)
-    db.session.commit()
+    db_session.add(new_session)
+    db_session.commit()
 
     return jsonify(session_id=session_id)
 
@@ -85,24 +107,21 @@ def augment_session(session_id):
     if session is None:
         abort(404)
     
-    if 'file' not in request.files:
-        return jsonify(error="No file part"), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify(error="No selected file"), 400
+    if 'file' not in request.json:
+        return jsonify(error="No file in request"), 400
+    
+    # change this so instead it uses the request body key files
+    file = request.json['file'] 
 
     augmented_file_path = os.path.join(base_dir, 'augmented-uploads', session_id+'.py')
     os.makedirs(os.path.dirname(augmented_file_path), exist_ok=True)
-    file.save(augmented_file_path)
+    with open(augmented_file_path, 'w') as f:
+        f.write(file)
 
     session.augmented_file_path = augmented_file_path
-    db.session.commit()
+    db_session.commit()
 
     return jsonify(session_id=session_id, augmented=True)
-
-
-with app.app_context():
-    db.create_all()
 
 ## Mitmproxy
 
@@ -182,5 +201,5 @@ class CaptureGitHubCopilot:
             
 addons = [
     CaptureGitHubCopilot(),
-    asgiapp.WSGIApp(app, "sessions.copilot", 80),
+    asgiapp.WSGIApp(app, "capture.copilot", 80),
 ]
