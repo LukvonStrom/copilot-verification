@@ -22,6 +22,11 @@ def example_route():
     except AssertionError as e:
         raise e
 
+# This is an application that exposes routes for a calculator.
+# It has a route for addition, subtraction, multiplication and division.
+# Each route expects two query parameters, a and b, which are the numbers
+# Each route is implemented in a framework-agnostic method and a seperate flask method that handles the request
+# Integrity is ensured via asserts so the application can handle the errors gracefully
 
 if __name__ == "__main__":
     app.run()
