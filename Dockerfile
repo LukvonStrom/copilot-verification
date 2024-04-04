@@ -9,16 +9,20 @@ RUN mkdir -p /home/mitmproxy/prompt && \
 RUN mkdir -p /home/mitmproxy/completion && \
     chown mitmproxy:staff /home/mitmproxy/completion
 
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip 
+RUN pip3 install z3-solver crosshair-tool
+RUN pip3 install flask prospector flask-sqlalchemy sqlalchemy
+RUN rm -rf /var/lib/apt/lists/*
+
+# After dependencies
+
 ADD ./mitmproxy_addon.py /home/mitmproxy/mitmproxy_addon.py
 RUN chmod +x /home/mitmproxy/mitmproxy_addon.py
 
 RUN usermod -u 1000 mitmproxy
 RUN usermod -G staff mitmproxy
 
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip && \
-    pip3 install Flask prospector crosshair-tool flask-sqlalchemy sqlalchemy && \
-    rm -rf /var/lib/apt/lists/*
 # USER mitmproxy
 EXPOSE 8082
 
