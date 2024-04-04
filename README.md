@@ -21,6 +21,24 @@ Please follow this tutorial to make sure that the system trusts mitmproxy: https
 Please follow the steps outlined here: (alternative link: https://device.harmonyos.com/en/docs/documentation/guide/vscode_proxy-0000001074231144 - specify the server as `https://localhost:8080` and disable strict ssl checking)
 ![./static/proxy.gif](./static/proxy.gif)
 
+
+### Basic test of the extension
+Now that everything is setup we can conduct a basic test as shown below:
+![./static/basic-demo.gif](./static/basic-demo.gif)
+
+The steps shown in the video are:
+- Open the cloned repository in vscode.
+- Open the folder containing the extension in vscode via `code code-extractor-extension`
+- Click on `Run \& Debug` - and there on the Play icon next to `Run Extension`
+- In the newly spawned VsCode instance with the extension in debug mode, open a new python file
+- Open the Command Bar with `CMD-SHIFT-P` 
+- Select `copilot-verifier: Start Verification Session`
+- A notification should appear and the Github Copilot Inline Chat Window should open itself.
+- Prompt Copilot
+- After a short delay, the verification will start, which is signified by a loading notification
+- Next, a markdown with the verification results from the backend will open.
+
+
 ## Changed Copilot System Prompt for shorter files
 
 ```
