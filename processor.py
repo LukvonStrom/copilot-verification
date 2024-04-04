@@ -1,19 +1,20 @@
 import json
 import markdown2
 
+
 def apply_diff(original_content, diff_block):
     # Initialize a list to hold the final content
     final_content = []
     # Split the original content into lines
-    original_lines = original_content.split('\n')
+    original_lines = original_content.split("\n")
     # Use a set for faster lookup
     lines_to_remove = set()
 
     # First pass: mark lines to remove and add new lines immediately
-    for line in diff_block.split('\n'):
-        if line.startswith('+'):
+    for line in diff_block.split("\n"):
+        if line.startswith("+"):
             final_content.append(line[1:].strip())
-        elif line.startswith('-'):
+        elif line.startswith("-"):
             lines_to_remove.add(line[1:].strip())
 
     # Second pass: add original lines that weren't marked for removal
@@ -22,29 +23,30 @@ def apply_diff(original_content, diff_block):
             final_content.append(line)
 
     # Join the final content into a single string
-    return '\n'.join(final_content)
+    return "\n".join(final_content)
+
 
 def extract_code_blocks(markdown_text):
     # Convert markdown to HTML with fenced-code-blocks support
     html = markdown2.markdown(markdown_text, extras=["fenced-code-blocks"])
-    
+
     # Initialize a list to hold code blocks
     code_blocks = []
-    
+
     # Split the HTML content by lines to process each line
-    lines = html.split('\n')
+    lines = html.split("\n")
     inside_code_block = False
     current_code_block = []
 
     for line in lines:
-        if line.startswith('<pre><code'):
+        if line.startswith("<pre><code"):
             inside_code_block = True
-            current_code_block = [line.replace('<pre><code>', '')]
-        elif line.endswith('</code></pre>'):
+            current_code_block = [line.replace("<pre><code>", "")]
+        elif line.endswith("</code></pre>"):
             inside_code_block = False
             # Trim leading and trailing line breaks and append the cleaned code block
-            last_line = line.replace('</code></pre>', '').strip()
-            if len(last_line) >0:
+            last_line = line.replace("</code></pre>", "").strip()
+            if len(last_line) > 0:
                 current_code_block.append(last_line)
             code_blocks.append(current_code_block)
             current_code_block = []
@@ -52,7 +54,6 @@ def extract_code_blocks(markdown_text):
             current_code_block.append(line)
 
     return code_blocks
-
 
     # Extract code blocks
     code_blocks = extract_code_blocks(markdown_content)
@@ -75,4 +76,4 @@ def extract_code_blocks(markdown_text):
         final_content = "\n".join(original_content)
     else:
         # Its a diff for longer contents
-        final_content = apply_diff(original_content, '\n'.join(code_blocks[0]))
+        final_content = apply_diff(original_content, "\n".join(code_blocks[0]))
