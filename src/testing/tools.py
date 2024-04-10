@@ -1,4 +1,5 @@
 import json
+import os
 from src.testing.check_asserts import check_asserts
 
 
@@ -9,13 +10,26 @@ import json
 # Run prospector via cli on a given file that is given as parameter
 # The output structure is as follows:
 def run_prospector(file_path):
-    command = f"python -m prospector {file_path} -o json --zero-exit"
+
+
+    # find .prospector.yaml in the root dir
+    prospector_config_path = os.path.join(os.getcwd(), ".prospector.yaml")
+    # print(prospector_config_path)
+
+    # print("-"*500)
+    command = f"python -m prospector --profile {prospector_config_path} --zero-exit {file_path}"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+    # print("raw output", result)
+
+    # print('-'*500)
     if result.returncode == 0:
-        return True, None
-    print("raw output", result)
-    output = json.loads(result.stdout.strip())
-    print(output["summary"]["message_count"], "issues found in", file_path)
+        output = json.loads(result.stdout.strip())
+    else:
+        output = json.loads(result.stderr.strip())
+    # print(output["summary"]["message_count"], "issues found in", file_path)
+    if result.returncode == 0:
+        return True, output
     return False, output
 
 
@@ -43,11 +57,18 @@ def run_crosshair(file_path):
     if not check_asserts(file_path):
         # throw exception
         return False, f"No asserts found"
-    command = f"crosshair check {file_path} --analysis_kind asserts"
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    command = f"python -m crosshair check {file_path} --analysis_kind asserts"
+    result = subprocess.run(command, shell=True, capture_output=True, text=True, check=False)
     returncode = result.returncode
-    print("crosshair exit code", result.returncode)
-    output = result.stdout.strip()
+    # print("crosshair exit code", result.returncode)
+
+    # print('-'*1000)
+    # print("running", command, "yielded", result, "with", result.stdout)
+    # print('-'*1000)
+    if returncode == 0:
+        output = result.stdout.strip()
+    else:
+        output = result.stderr.strip()
     print("crosshair output", output)
     output = parse_mypy_output(output)
 

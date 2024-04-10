@@ -36,4 +36,8 @@ RUN chmod +x /home/mitmproxy/processor.py && \
 
 ADD ./start.sh /start.sh
 RUN chmod +x /start.sh
+
+
+COPY .prospector.yaml /home/mitmproxy/.prospector.yaml
+
 CMD ["/start.sh"]

@@ -1,0 +1,29 @@
+output-format: json
+
+strictness: medium
+test-warnings: true
+doc-warnings: false
+inherits:
+  - default
+# autodetect: true
+
+dodgy:
+  run: true
+
+
+mccabe:
+  run: true
+  options:
+    max-complexity: 20
+
+pyright:
+  run: true
+  options:
+    level: warning
+    # skipunannotated: true
+
+mypy:
+  run: true
+
+vulture:
+  run: true
