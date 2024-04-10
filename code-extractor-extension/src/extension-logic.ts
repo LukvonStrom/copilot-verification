@@ -4,6 +4,9 @@ import path from 'path';
 
 export async function sessionStart(
   context: vscode.ExtensionContext,
+  checkDiagnosticsCallback: (
+    document: vscode.TextDocument
+  ) => Promise<vscode.DiagnosticCollection | undefined>,
   callback: () => void
 ) {
   const activeEditor = vscode.window.activeTextEditor;
@@ -16,15 +19,26 @@ export async function sessionStart(
       return;
     }
 
+    checkDiagnosticsCallback(activeEditor.document).then(
+      (diagCollection) => {
+        if (
+          diagCollection &&
+          diagCollection.has(activeEditor.document.uri)
+        ) {
+          vscode.window.showErrorMessage(
+            `Asserts missing for Crosshair - I annotated the occurences in the current file.`
+          );
+        }
+      }
+    );
+
     const activeCode = activeEditor.document.getText();
     console.log('Active code:', activeCode);
-    const currentFile = activeEditor.document.fileName;
-    console.log('Current file:', currentFile);
 
     vscode.commands.executeCommand('vscode.editorChat.start');
 
     const { session_id } = await createSession(activeCode);
-    context.workspaceState.update(`${currentFile}`, session_id);
+    context.workspaceState.update(activeEditor.document.fileName, session_id);
 
     vscode.window.showInformationMessage(
       'Successfully activated the completion verifier! Now go ahead and prompt Copilot to complete some code.'

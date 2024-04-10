@@ -29,6 +29,48 @@ async function fetchWithVscodeProxy(
 
 const BASE_URL = 'http://example.com';
 
+export async function fetchDiagnosticsForAsserts(
+  fileContent: string,
+  filePath: string
+): Promise<{
+  method: 'textDocument/publishDiagnostics';
+  params: {
+    uri: string;
+    diagnostics: vscode.Diagnostic[];
+  };
+}> {
+  const response = await fetchWithVscodeProxy(`${BASE_URL}/asserts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ file: fileContent, filePath }),
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  let diagnosticsResponse = await response.json();
+  diagnosticsResponse.params.diagnostics =
+    diagnosticsResponse.params.diagnostics.map(
+      (diagnostic: vscode.Diagnostic) => {
+        // get end of line from fileContent
+        let endOfLine =
+          fileContent.split('\n')[diagnostic.range.end.line].length ?? diagnostic.range.end.character;
+        return new vscode.Diagnostic(
+          new vscode.Range(
+            diagnostic.range.start.line,
+            diagnostic.range.start.character,
+            diagnostic.range.end.line,
+            endOfLine
+          ),
+          diagnostic.message,
+          diagnostic.severity
+        );
+      }
+    );
+  return diagnosticsResponse;
+}
+
 export async function fetchCaptures() {
   try {
     const response = await fetchWithVscodeProxy(

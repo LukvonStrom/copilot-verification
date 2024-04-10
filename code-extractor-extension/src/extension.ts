@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
-import { augmentSession, createSession } from './client';
+import {
+  augmentSession,
+  createSession,
+  fetchDiagnosticsForAsserts,
+} from './client';
 import path from 'path';
 import { sessionStart } from './extension-logic';
 import { ToolOutput } from './types';
@@ -29,6 +33,44 @@ export function activate(context: vscode.ExtensionContext) {
     'Congratulations, your extension "completion-verifier" is now active!'
   );
 
+  const diagnosticCollection =
+    vscode.languages.createDiagnosticCollection('assertCheck');
+
+  // Subscribe to text document open and save events to update diagnostics
+  context.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument(checkDiagnostics)
+  );
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument(checkDiagnostics)
+  );
+
+  async function checkDiagnostics(document: vscode.TextDocument) {
+    if (document.languageId !== 'python') {
+      return;
+    }
+    if (diagnosticCollection.has(document.uri)) {
+      diagnosticCollection.delete(document.uri);
+    }
+    const diagnosticResponse = await fetchDiagnosticsForAsserts(
+      document.getText(),
+      document.fileName
+    );
+    console.log('Got', diagnosticResponse);
+
+    // Set the diagnostics for this document in the collection
+    diagnosticCollection.set(
+      document.uri,
+      diagnosticResponse.params.diagnostics
+    );
+
+    return diagnosticCollection;
+  }
+
+  // Initial check for already open documents
+  vscode.workspace.textDocuments.map((doc: vscode.TextDocument) =>
+    checkDiagnostics(doc)
+  );
+
   const completionVerifierEventEmitter =
     new vscode.EventEmitter<void>();
 
@@ -39,7 +81,7 @@ export function activate(context: vscode.ExtensionContext) {
   let completionCommandDisposable = vscode.commands.registerCommand(
     'completion-verifier.startCompletionVerifier',
     () =>
-      sessionStart(context, () =>
+      sessionStart(context, checkDiagnostics, () =>
         completionVerifierEventEmitter.fire()
       )
   );
@@ -54,65 +96,70 @@ export function activate(context: vscode.ExtensionContext) {
   //   // vscode.workspace.onWillSaveTextDocument((event) => console.log('onWillSaveTextDocument:', event)),
   // );
 
-  function setupDebouncedChangeListener() {
-    let changeTextEditorSelection =
-      vscode.window.onDidChangeTextEditorSelection(
-        debounce(
-          async (event: vscode.TextEditorSelectionChangeEvent) => {
-            console.log('onDidChangeTextEditorSelection:', event);
-            console.log(
-              vscode.window.activeTextEditor?.document.getText()
-            );
-            const sessionId = context.workspaceState.get<string>(
-              vscode?.window?.activeTextEditor?.document?.fileName ??
-                'aaaa'
-            );
-            if (!sessionId) {
-              vscode.window.showErrorMessage(
-                'I am not aware of any session for this file. Please start a session first!'
-              );
-              return;
-            }
+  const handleVerify = async () => {
+    console.log('window state', vscode.window.state);
+    console.log('text editor', vscode.window.activeTextEditor);
+    console.log(vscode.window.activeTextEditor?.document.getText());
+    const sessionId = context.workspaceState.get<string>(
+      vscode?.window?.activeTextEditor?.document?.fileName ?? 'aaaa'
+    );
+    if (!sessionId) {
+      vscode.window.showErrorMessage(
+        'I am not aware of any session for this file. Please start a session first!'
+      );
+      return;
+    }
 
-            let tooloutput: ToolOutput;
+    let tooloutput: ToolOutput;
 
-            vscode.window.withProgress(
-              {
-                location: vscode.ProgressLocation.Notification,
-                title: 'Verifying completion...',
-                cancellable: false,
-              },
-              async (progress, token) => {
-                progress.report({ increment: 0 });
-                let prog = 0;
-                const interval = setInterval(() => {
-                  progress.report({ increment: 10 });
-                  prog += 10;
-                  if (prog >= 80) {
-                    clearInterval(interval);
-                  }
-                }, 500);
+    vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'Verifying completion...',
+        cancellable: false,
+      },
+      async (progress, token) => {
+        progress.report({ increment: 0 });
+        let prog = 0;
+        const interval = setInterval(() => {
+          progress.report({ increment: 10 });
+          prog += 10;
+          if (prog >= 80) {
+            clearInterval(interval);
+          }
+        }, 500);
 
-                tooloutput = await augmentSession(
-                  sessionId,
-                  vscode.window.activeTextEditor?.document.getText()
-                ) as ToolOutput;
-                clearInterval(interval);
-                progress.report({ increment: 100 });
+        tooloutput = (await augmentSession(
+          sessionId,
+          vscode.window.activeTextEditor?.document.getText()
+        )) as ToolOutput;
+        clearInterval(interval);
+        progress.report({ increment: 100 });
 
-                const completedBothProspector = tooloutput.prospector_valid[0] && tooloutput.prospector_valid[1];
-                const completedBothCrosshair = tooloutput.crosshair_valid[0] && tooloutput.crosshair_valid[1];
+        const completedBothProspector =
+          tooloutput.prospector_valid[0] &&
+          tooloutput.prospector_valid[1];
+        const completedBothCrosshair =
+          tooloutput.crosshair_valid[0] &&
+          tooloutput.crosshair_valid[1];
 
-                const outputMarkdown = `# Completion Verifier Output
-            
+        const outputMarkdown = `# Completion Verifier Output
+    
 | Tool | Passed Before Completion | Passed After Completion |
 |---|---|---|
-| Prospector (Code Quality) | ${tooloutput.prospector_valid[0] ? '✅' : '❌'} | ${tooloutput.prospector_valid[1] ? '✅' : '❌'} |
-| Crosshair (Symbolic Execution) | ${tooloutput.crosshair_valid[0] ? '✅' : '❌'} | ${tooloutput.crosshair_valid[1] ? '✅' : '❌'} |
+| Prospector (Code Quality) | ${
+          tooloutput.prospector_valid[0] ? '✅' : '❌'
+        } | ${tooloutput.prospector_valid[1] ? '✅' : '❌'} |
+| Crosshair (Symbolic Execution) | ${
+          tooloutput.crosshair_valid[0] ? '✅' : '❌'
+        } | ${tooloutput.crosshair_valid[1] ? '✅' : '❌'} |
 
 
 ## Prospector Output
-${completedBothProspector ? '🎉🎉🎉 Congratulations! No Prospector remarks! 🎉🎉🎉' : `### Before Completion
+${
+  completedBothProspector
+    ? '🎉🎉🎉 Congratulations! No Prospector remarks! 🎉🎉🎉'
+    : `### Before Completion
 \`\`\`
 ${JSON.stringify(tooloutput.prospector_output[0], null, 2)}
 \`\`\`
@@ -120,7 +167,8 @@ ${JSON.stringify(tooloutput.prospector_output[0], null, 2)}
 \`\`\`
 ${JSON.stringify(tooloutput.prospector_output[1], null, 2)}
 \`\`\`
-`}
+`
+}
 
 
 ## Crosshair Output
@@ -132,54 +180,48 @@ ${JSON.stringify(tooloutput.crosshair_output[0], null, 2)}
 \`\`\`
 ${JSON.stringify(tooloutput.crosshair_output[1], null, 2)}
 \`\`\`
-`
+`;
 
-// Open a new text document with markdown content
-const document = await vscode.workspace.openTextDocument({
-  content: outputMarkdown,
-  language: 'markdown'
-});
+        // Open a new text document with markdown content
+        const document = await vscode.workspace.openTextDocument({
+          content: outputMarkdown,
+          language: 'markdown',
+        });
 
-// Show the markdown document in the editor
-const editor = await vscode.window.showTextDocument(document);
+        // Execute the command to show markdown preview
+        await vscode.commands.executeCommand(
+          'markdown.showPreview',
+          document.uri
+        );
+      }
+    );
+  };
 
-// Execute the command to show markdown preview
-await vscode.commands.executeCommand('markdown.showPreview', document.uri);
-
-// Optionally, you can focus back to the editor if needed
-// await vscode.window.showTextDocument(document);
-
-
-// vscode.workspace.openTextDocument({ content: outputMarkdown, language: 'markdown' })
-//   .then(document => {
-//     // Open the document
-//     vscode.window.showTextDocument(document)
-//       .then(editor => {
-//         // Command to switch to markdown preview
-//         vscode.commands.executeCommand('markdown.showPreviewToSide')
-//           .then(() => {
-//             // Optional: Additional commands or actions after opening the preview
-//           }, err => {
-//             // Handle errors, e.g., command not found
-//             console.error(err);
-//           });
-//       }, err => {
-//         // Handle errors, e.g., document couldn't be opened
-//         console.error(err);
-//       });
-//   }, err => {
-//     // Handle errors, e.g., document couldn't be created
-//     console.error(err);
-//   });
-
-
-              }
+  function setupDebouncedChangeListener() {
+    let changeTextEditorSelection =
+      vscode.window.onDidChangeTextEditorSelection(
+        debounce(async () => {
+          console.log('Spawining Info Message');
+          const selection =
+            await vscode.window.showInformationMessage(
+              'It seems like a completion was generated - do you want to verify it?',
+              'Yes',
+              'No'
             );
-
-            
-          },
-          3555
-        )
+          if (selection === 'Yes') {
+            await handleVerify();
+          } else {
+            vscode.window.showInformationMessage(
+              'Okay, session ended. You can start a new session anytime!'
+            );
+            if (vscode.window?.activeTextEditor?.document?.fileName)
+              context.workspaceState.update(
+                vscode.window?.activeTextEditor?.document?.fileName,
+                undefined
+              );
+            changeTextEditorSelection.dispose();
+          }
+        }, 3555)
       );
 
     context.subscriptions.push(changeTextEditorSelection);

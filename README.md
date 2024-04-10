@@ -29,7 +29,7 @@ Now that everything is setup we can conduct a basic test as shown below:
 The steps shown in the video are:
 - Open the cloned repository in vscode.
 - Open the folder containing the extension in vscode via `code code-extractor-extension`
-- Click on `Run \& Debug` - and there on the Play icon next to `Run Extension`
+- Click on `Run & Debug` - and there on the Play icon next to `Run Extension`
 - In the newly spawned VsCode instance with the extension in debug mode, open a new python file
 - Open the Command Bar with `CMD-SHIFT-P` 
 - Select `copilot-verifier: Start Verification Session`
@@ -38,6 +38,17 @@ The steps shown in the video are:
 - After a short delay, the verification will start, which is signified by a loading notification
 - Next, a markdown with the verification results from the backend will open.
 
+
+### Syntax Highlighting for missing pre- or postconditions
+The extension automatically validates in the background that two `assert` statements are present in any method in the code.
+If this is not the case, a syntax error will be displayed in the Editor at the specific method.
+![./static/conditions-error.jpg](./static/conditions-error.jpg)
+
+The error is verbose on purpose to facilitate an easier fix with Copilot. 
+To now prompt copilot to fix this error, one simply has to invoke it inline by clicking on the impacted line and executing `CMD-I`.
+Copilot subsequently will attempt to generate sensible pre- and postconditions to fix the error.
+
+![./static/copilot-conditions.jpg](./static/copilot-conditions.jpg)
 
 ## Changed Copilot System Prompt for shorter files
 
