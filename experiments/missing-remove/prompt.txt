@@ -1,0 +1,1 @@
+add a remove_item method and add it to the main usage

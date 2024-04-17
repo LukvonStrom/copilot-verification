@@ -13,7 +13,7 @@ class ShoppingCart:
         self.items[item_name] = self.items.get(item_name, 0) + quantity
 
     def get_total_price(self, item_prices: dict[str, float]) -> float:
-        total_price:float = 0
+        total_price:float = 0 
         for item_name, quantity in self.items.items():
             assert item_name in item_prices, f"Price for '{item_name}' not defined"
             total_price += item_prices[item_name] * quantity

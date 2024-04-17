@@ -50,12 +50,8 @@ Copilot subsequently will attempt to generate sensible pre- and postconditions t
 
 ![./static/copilot-conditions.jpg](./static/copilot-conditions.jpg)
 
-## Changed Copilot System Prompt for shorter files
+### Settings
+The extension exposes the following settings:
+![./static/settings.jpg](./static/settings.jpg)
 
-```
-{"role": "user", "content": "I have the following code in the selection:\n```python\n# FILEPATH: /Users/lukasfruntke/Postman/test.py\n# BEGIN: ed8c6549bwf9\nimport os\nimport os\n\ncurrent_path = os.getcwd()\nprint(\"Current path:\", current_path)\n# END: ed8c6549bwf9\n```"}, 
-```
-
-```
-Only change the code inside of the selection, delimited by markers '# BEGIN: ed8c6549bwf9' and '# END: ed8c6549bwf9'. The code block with the suggested changes should also contain the markers.
-```
+With these settings, the URI of the Docker container is controllable, as well as the debounce time after which the LLM Verifier asks whether to verify the completion. When enabling save, results from the verification run are saved as markdown files in the same file.

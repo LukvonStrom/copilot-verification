@@ -1,0 +1,9 @@
+__pycache__/
+**/__pycache__/
+.env/
+.mypy_cache/
+augmented-uploads/
+code-extractor-extension/
+experiments/
+uploads/
+*.sqlite3

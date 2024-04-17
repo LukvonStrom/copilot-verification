@@ -24,9 +24,15 @@ def run_prospector(file_path):
 
     # print('-'*500)
     if result.returncode == 0:
-        output = json.loads(result.stdout.strip())
+        try:
+            output = json.loads(result.stdout.strip())
+        except Exception:
+            output = result.stdout.strip()
     else:
-        output = json.loads(result.stderr.strip())
+        try:
+            output = json.loads(result.stderr.strip())
+        except Exception:
+            output = result.stderr.strip()
     # print(output["summary"]["message_count"], "issues found in", file_path)
     if result.returncode == 0:
         return True, output
