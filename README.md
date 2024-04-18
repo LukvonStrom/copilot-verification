@@ -5,7 +5,7 @@ Verify GitHub Copilot outputs for Python with this VSCode Extension and accompan
 :warning: **Disclaimer**: The code contained in this repository is provided for educational purposes only. By executing or using the code, you assume full responsibility for any consequences that may arise. The creators, contributors, or any associated parties shall not be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this code. Any liabilities arising from the violation of any plausible terms of use of GitHub Copilot or related services are explicitly disclaimed. Use this code at your own risk. :warning:
 
 ## Setup for the final architecture
-The docker container depends on being run with `docker run --rm -p 8000:8000 ghcr.io/lukvonstrom/copilot-verification:main` please be aware that currently only amd64 architectures are supported.
+The docker container depends on being run with `docker run --rm -p 8000:8000 ghcr.io/lukvonstrom/copilot-verification:latest` please be aware that currently only amd64 architectures are supported.
 
 
 ### ARM based Macs
