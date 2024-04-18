@@ -4,8 +4,8 @@
 ## Preamble
 :warning: **Disclaimer**: The code contained in this repository is provided for educational purposes only. By executing or using the code, you assume full responsibility for any consequences that may arise. The creators, contributors, or any associated parties shall not be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this code. Any liabilities arising from the violation of any plausible terms of use of GitHub Copilot or related services are explicitly disclaimed. Use this code at your own risk. :warning:
 
-## Setup
-The docker container depends on being run with `docker run --rm -v ~/.mitmproxy:/home/mitmproxy/.mitmproxy -p 8080:8080 ghcr.io/lukvonstrom/copilot-verification:main` please be aware that currently only amd64 architectures are supported.
+## Setup for the final architecture
+The docker container depends on being run with `docker run --rm -p 8000:8000 ghcr.io/lukvonstrom/copilot-verification:main` please be aware that currently only amd64 architectures are supported.
 
 
 ### ARM based Macs
@@ -13,13 +13,6 @@ For ARM based Macs, intel emulation via rosetta needs to be used, as microsoft p
 Building Z3 from source is quite expensive, therefore emulation can be used like this (given that you manage docker via colima https://github.com/abiosoft/colima and have rosetta installed already https://support.apple.com/en-gb/102527):
 `colima start --profile amd64 -a x86_64 -c 4 -m 6`
 
-### Installing mitmproxy root certificates
-Please follow this tutorial to make sure that the system trusts mitmproxy: https://docs.mitmproxy.org/stable/concepts-certificates/
-
-### Setup VSCode Proxy
-
-Please follow the steps outlined here: (alternative link: https://device.harmonyos.com/en/docs/documentation/guide/vscode_proxy-0000001074231144 - specify the server as `https://localhost:8080` and disable strict ssl checking)
-![./static/proxy.gif](./static/proxy.gif)
 
 
 ### Basic test of the extension
