@@ -3,11 +3,56 @@ import { ToolOutput } from '../types';
 import { VerifierClient } from '../client';
 import path from 'path';
 
+type ProspectorLocation = {
+  character: number;
+  function: string | null;
+  line: number;
+  module: string | null;
+  path: string;
+};
+
+type ProspectorMessage = {
+  code: string;
+  location: ProspectorLocation;
+  message: string;
+  source: string;
+};
+
+type ProspectorSummary = {
+  completed: string;
+  formatter: string;
+  libraries: string[];
+  message_count: number;
+  profiles: string;
+  started: string;
+  strictness: string;
+  time_taken: number;
+  tools: string[];
+};
+
+// Function to create a Markdown table of error messages
+function generateMarkdownTable(
+  messages: ProspectorMessage[]
+): string {
+  let markdown = `| Code | Line | Message | Source |\n| ---- | ---- | ------- | ------ |\n`;
+  messages.forEach((msg) => {
+    markdown += `| ${msg.code} | ${
+      msg.location.line
+    } | ${msg.message.replace('\n', ' ')} | ${msg.source.replace(
+      '\n',
+      ' '
+    )} |\n`;
+  });
+  return markdown;
+}
+
 export const handleVerify = async (
   context: vscode.ExtensionContext,
   verifierClient: VerifierClient,
   saveResults: boolean
 ) => {
+  const startTime = process.hrtime();
+
   const sessionId = context.workspaceState.get<string>(
     vscode?.window?.activeTextEditor?.document?.fileName ?? 'aaaa'
   );
@@ -41,6 +86,10 @@ export const handleVerify = async (
         sessionId,
         vscode.window.activeTextEditor?.document.getText()
       )) as ToolOutput;
+
+      console.log('-----------------------------------');
+      console.log('Tool Output:', tooloutput);
+      console.log('-----------------------------------');
       const completedBothProspector =
         tooloutput.prospector_valid[0] &&
         tooloutput.prospector_valid[1];
@@ -48,33 +97,42 @@ export const handleVerify = async (
         tooloutput.crosshair_valid[0] &&
         tooloutput.crosshair_valid[1];
 
+      const hrend = process.hrtime(startTime);
+      const elapsedTime = hrend[0] + hrend[1] / Math.pow(10, 9);
+
       const outputMarkdown = `# Completion Verifier Output
 
 | Tool | Passed Before Completion | Passed After Completion |
 |---|---|---|
 | Prospector (Code Quality) | ${
-        tooloutput.prospector_valid[0] ? '✅' : '❌'
-      } | ${tooloutput.prospector_valid[1] ? '✅' : '❌'} |
+        tooloutput.prospector_valid[0] &&
+        tooloutput.prospector_output[0].messages.length < 1
+          ? '✅'
+          : '❌'
+      } | ${
+        tooloutput.prospector_valid[1] &&
+        tooloutput.prospector_output[1].messages.length < 1
+          ? '✅'
+          : '❌'
+      } |
 | Crosshair (Symbolic Execution) | ${
         tooloutput.crosshair_valid[0] ? '✅' : '❌'
       } | ${tooloutput.crosshair_valid[1] ? '✅' : '❌'} |
 
-
 ## Prospector Output
-${
-  completedBothProspector
-    ? '🎉🎉🎉 Congratulations! No Prospector remarks! 🎉🎉🎉'
-    : `### Before Completion
-\`\`\`
+### Before Completion
+
+${generateMarkdownTable(tooloutput.prospector_output[0].messages)}
+
+\`\`\` 
 ${JSON.stringify(tooloutput.prospector_output[0], null, 2)}
 \`\`\`
 ### After Completion
+${generateMarkdownTable(tooloutput.prospector_output[1].messages)}
+
 \`\`\`
 ${JSON.stringify(tooloutput.prospector_output[1], null, 2)}
 \`\`\`
-`
-}
-
 
 ## Crosshair Output
 ### Before Completion
@@ -85,6 +143,12 @@ ${JSON.stringify(tooloutput.crosshair_output[0], null, 2)}
 \`\`\`
 ${JSON.stringify(tooloutput.crosshair_output[1], null, 2)}
 \`\`\`
+
+--- 
+
+Session ID: \`${sessionId}\`
+
+Time taken: ${elapsedTime.toFixed(2)} seconds
 `;
 
       let document: vscode.TextDocument | undefined;
@@ -92,6 +156,7 @@ ${JSON.stringify(tooloutput.crosshair_output[1], null, 2)}
       if (saveResults) {
         const fullPath =
           vscode.window.activeTextEditor?.document.fileName;
+        console.log('Full Path', fullPath);
         if (fullPath) {
           const directory = path.dirname(fullPath);
           const filenameWithoutExtension = path.basename(
@@ -105,6 +170,7 @@ ${JSON.stringify(tooloutput.crosshair_output[1], null, 2)}
             uri,
             new TextEncoder().encode(outputMarkdown)
           );
+          console.log('Saved to', newFilePath);
 
           document = await vscode.workspace.openTextDocument(uri);
         }

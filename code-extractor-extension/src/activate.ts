@@ -3,6 +3,7 @@ import { VerifierClient } from './client';
 import { checkDiagnostics } from './diagnostics/diagnostics';
 import { setupDebouncedChangeListener } from './changeEventListener';
 import { sessionStart } from './session-start';
+import { handleVerify } from './verification/handleVerification';
 
 export async function activateExtension(
   context: vscode.ExtensionContext
@@ -25,7 +26,9 @@ export async function activateExtension(
   const saveResults =
     vscode.workspace
       .getConfiguration()
-      .get<boolean>('llmverifier.saveResults') ?? false;
+      .get<boolean>('llmverifier.saveResults') ?? true;
+
+  console.log('Config', { backendUri, debounceTime, saveResults });
 
   const verifierClient = new VerifierClient(backendUri);
   const diagnosticCollection =
@@ -68,6 +71,27 @@ export async function activateExtension(
       )
   );
   context.subscriptions.push(completionCommandDisposable);
+
+  let forceValidateCommandDisposable =
+    vscode.commands.registerCommand(
+      'completion-verifier.forceVerify',
+      () => {
+        const sessionId = context.workspaceState.get<string>(
+          vscode?.window?.activeTextEditor?.document?.fileName ??
+            'aaaa'
+        );
+        if (!sessionId) {
+          sessionStart(
+            context,
+            verifierClient,
+            diagnosticCollection,
+            () => completionVerifierEventEmitter.fire()
+          );
+        }
+        handleVerify(context, verifierClient, saveResults);
+      }
+    );
+  context.subscriptions.push(forceValidateCommandDisposable);
 
   // Attach the listener to the custom event
   context.subscriptions.push(

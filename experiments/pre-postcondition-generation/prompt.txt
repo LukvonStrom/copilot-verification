@@ -1,0 +1,1 @@
+/fix Function 'get_total_price' does not have at least two assert statements (pre- and postcondition) needed for CrossHair symbolic execution of this method. Come up with sensible pre- and postconditions and add them as assert statements in the function body. For more information, see https://crosshair.readthedocs.io/en/latest/kinds_of_contracts.html#assert-based-contracts.

@@ -6,6 +6,8 @@ from src.testing.check_asserts import check_asserts
 import subprocess
 import json
 
+# timeout for tools in seconds
+timeout = 240
 
 # Run prospector via cli on a given file that is given as parameter
 # The output structure is as follows:
@@ -18,7 +20,10 @@ def run_prospector(file_path):
 
     # print("-"*500)
     command = f"python -m prospector --profile {prospector_config_path} --zero-exit {file_path}"
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    try:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return False, "Prospector timed out"
 
     # print("raw output", result)
 
@@ -63,9 +68,13 @@ def run_crosshair(file_path):
     if not check_asserts(file_path):
         # throw exception
         return False, f"No asserts found"
-    command = f"python -m crosshair check {file_path} --analysis_kind asserts"
-    result = subprocess.run(command, shell=True, capture_output=True, text=True, check=False)
-    returncode = result.returncode
+    command = f"python -m crosshair check {file_path} --analysis_kind asserts --report_all --per_condition_timeout=6 --per_path_timeout=4"
+    try:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, check=False, timeout=timeout)
+        returncode = result.returncode
+    except subprocess.TimeoutExpired:
+        return False, "Crosshair timed out"
+    
     # print("crosshair exit code", result.returncode)
 
     # print('-'*1000)
@@ -73,8 +82,13 @@ def run_crosshair(file_path):
     # print('-'*1000)
     if returncode == 0:
         output = result.stdout.strip()
+        if len(output) == 0:
+            output = result.stderr.strip()
     else:
         output = result.stderr.strip()
+        if len(output) == 0:
+            output = result.stdout.strip()
+    print("ch result", result.stderr, result.stdout, output)
     print("crosshair output", output)
     output = parse_mypy_output(output)
 
@@ -82,5 +96,5 @@ def run_crosshair(file_path):
     if returncode == 1 and len(output) == 0:
         return False, "Verification failed. No issues triagable by Crosshair found."
     elif returncode == 0:
-        return True, None
+        return True, output
     return False, output

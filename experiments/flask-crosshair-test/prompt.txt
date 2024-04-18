@@ -1,0 +1,1 @@
+Add another route that follows the same patterns

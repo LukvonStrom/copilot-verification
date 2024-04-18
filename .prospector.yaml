@@ -10,7 +10,6 @@ inherits:
 dodgy:
   run: true
 
-
 mccabe:
   run: true
   options:

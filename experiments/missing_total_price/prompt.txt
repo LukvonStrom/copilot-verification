@@ -1,0 +1,1 @@
+Add a method called calculate_total_price to the ShoppingCart class. Ensure it has proper pre- and postconditions with assert statements!

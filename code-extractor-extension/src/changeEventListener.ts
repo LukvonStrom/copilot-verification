@@ -10,23 +10,30 @@ const handleDebouncedChangeEvent = async (
   saveResults: boolean
 ) => {
   console.log('Spawining Info Message');
-  const selection = await vscode.window.showInformationMessage(
-    'It seems like a completion was generated - do you want to verify it?',
-    'Yes',
-    'No'
+
+  const sessionId = context.workspaceState.get<string>(
+    vscode?.window?.activeTextEditor?.document?.fileName ?? 'aaaa'
   );
-  if (selection === 'Yes') {
-    await handleVerify(context, verifierClient, saveResults);
-  } else if (selection === 'No') {
-    vscode.window.showInformationMessage(
-      'Okay, session ended. You can start a new session anytime!'
+
+  if (sessionId) {
+    const selection = await vscode.window.showInformationMessage(
+      'It seems like a completion was generated - do you want to verify it?',
+      'Yes',
+      'No'
     );
-    if (vscode.window?.activeTextEditor?.document?.fileName)
-      context.workspaceState.update(
-        vscode.window?.activeTextEditor?.document?.fileName,
-        undefined
+    if (selection === 'Yes') {
+      await handleVerify(context, verifierClient, saveResults);
+    } else if (selection === 'No') {
+      vscode.window.showInformationMessage(
+        'Okay, session ended. You can start a new session anytime!'
       );
-    selfDisposable.dispose();
+      if (vscode.window?.activeTextEditor?.document?.fileName)
+        context.workspaceState.update(
+          vscode.window?.activeTextEditor?.document?.fileName,
+          undefined
+        );
+      selfDisposable.dispose();
+    }
   }
 };
 
@@ -46,7 +53,7 @@ export function setupDebouncedChangeListener(
             verifierClient,
             saveResults
           ),
-          debounceTime
+        debounceTime
       )
     );
   context.subscriptions.push(changeTextEditorSelection);

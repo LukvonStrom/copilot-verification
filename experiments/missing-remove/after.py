@@ -13,7 +13,13 @@ class ShoppingCart:
         self.items[item_name] = self.items.get(item_name, 0) + quantity
 
     # Place new methods here
-    
+    def remove_item(self, item_name: str, quantity: int) -> None:
+        assert quantity > 0, "Quantity must be positive"
+        assert item_name in self.items, "Item does not exist in the cart"
+        assert self.items[item_name] >= quantity, "Not enough quantity of the item in the cart"
+        self.items[item_name] -= quantity
+        if self.items[item_name] == 0:
+            del self.items[item_name]
 
 if __name__ == "__main__":
     # Trigger max_items assertion (negative value)

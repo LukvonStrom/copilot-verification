@@ -16,6 +16,11 @@
         "command": "completion-verifier.startCompletionVerifier",
         "title": "Start Completion Verifier",
         "category": "copilot-verifier"
+      },
+      {
+        "command": "completion-verifier.forceVerify",
+        "title": "Force Verify current file",
+        "category": "copilot-verifier"
       }
     ],
     "configuration": {

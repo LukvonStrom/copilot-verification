@@ -38,14 +38,17 @@ class AssertVisitor(ast.NodeVisitor):
 
 
 def check_asserts(file_path_or_content, file_path=None):
-    if os.path.exists(file_path_or_content):
-        with open(file_path_or_content, "r", encoding="utf-8") as file:
-            content = file.read()
-        file_uri = f"file://{file_path_or_content}"
-    else:
-        content = file_path_or_content
-        file_uri = file_path
+    try:
+        if os.path.exists(file_path_or_content):
+            with open(file_path_or_content, "r", encoding="utf-8") as file:
+                content = file.read()
+            file_uri = f"file://{file_path_or_content}"
+        else:
+            content = file_path_or_content
+            file_uri = file_path
 
-    visitor = AssertVisitor(file_uri, content)
-    visitor.visit(ast.parse(content))
-    return visitor.get_final_diagnostics()
+        visitor = AssertVisitor(file_uri, content)
+        visitor.visit(ast.parse(content))
+        return visitor.get_final_diagnostics()
+    except Exception as e:
+        return

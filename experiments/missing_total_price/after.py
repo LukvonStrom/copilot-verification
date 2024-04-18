@@ -29,7 +29,13 @@ class ShoppingCart:
         
         total_price = sum(self.items[item_name] * item_prices[item_name] for item_name in self.items)
         return total_price
-    
+    def calculate_total_price(self, item_prices: dict[str, float]) -> float:
+        assert isinstance(item_prices, dict), "Item prices must be a dictionary"
+        assert all(isinstance(price, float) for price in item_prices.values()), "Item prices must be floats"
+        assert all(item_name in item_prices for item_name in self.items), "Item prices missing for some items"
+        
+        total_price = sum(self.items[item_name] * item_prices[item_name] for item_name in self.items)
+        return total_price
 
 if __name__ == "__main__":
     # Trigger max_items assertion (negative value)
