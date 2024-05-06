@@ -102,7 +102,7 @@ typing_extensions==4.10.0
 urllib3==2.2.1
 urwid-mitmproxy==2.1.2.1
 vulture==2.11
-Werkzeug==3.0.1
+Werkzeug==3.0.3
 wrapt==1.16.0
 wsproto==1.2.0
 z3-solver==4.11.2.0
