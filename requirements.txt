@@ -94,7 +94,7 @@ SQLAlchemy==2.0.29
 stevedore==5.2.0
 toml==0.10.2
 tomlkit==0.12.4
-tornado==6.4
+tornado==6.4.1
 trove-classifiers==2024.4.10
 typeshed_client==2.5.1
 typing-inspect==0.9.0
