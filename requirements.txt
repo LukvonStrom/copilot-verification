@@ -99,7 +99,7 @@ trove-classifiers==2024.4.10
 typeshed_client==2.5.1
 typing-inspect==0.9.0
 typing_extensions==4.10.0
-urllib3==2.2.1
+urllib3==2.2.2
 urwid-mitmproxy==2.1.2.1
 vulture==2.11
 Werkzeug==3.0.1
