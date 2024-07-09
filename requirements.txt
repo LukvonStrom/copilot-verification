@@ -106,5 +106,5 @@ Werkzeug==3.0.1
 wrapt==1.16.0
 wsproto==1.2.0
 z3-solver==4.11.2.0
-zipp==3.18.1
+zipp==3.19.1
 zstandard==0.22.0
